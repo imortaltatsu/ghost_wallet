@@ -125,9 +125,25 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
             set({ availableModels: updatedModels });
 
-            // Auto-set current model if downloaded is found
-            const current = get().currentModel;
-            if (!current) {
+            // Ensure current model state is consistent with disk
+            const state = get();
+            const current = state.currentModel;
+
+            if (current) {
+                // If current model exists in our updated list, sync its downloaded status
+                const updatedCurrent = updatedModels.find(m => m.id === current.id);
+                if (updatedCurrent && updatedCurrent.downloaded !== current.downloaded) {
+                    console.log(`Syncing current model status: ${current.id} downloaded=${updatedCurrent.downloaded}`);
+                    set({
+                        currentModel: {
+                            ...current,
+                            downloaded: updatedCurrent.downloaded,
+                            localPath: updatedCurrent.localPath
+                        }
+                    });
+                }
+            } else {
+                // Auto-select if no current model
                 const downloaded = updatedModels.find(m => m.downloaded);
                 if (downloaded) {
                     set({ currentModel: downloaded });
