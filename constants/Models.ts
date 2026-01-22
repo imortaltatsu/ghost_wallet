@@ -31,4 +31,4 @@ export const STOP_WORDS = [
     '<|im_end|>',
     '<|EOT|>',
     '<|END_OF_TURN_TOKEN|>',
-    '
+]
