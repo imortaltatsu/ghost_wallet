@@ -63,8 +63,8 @@ export async function generateText(req: AiGenerateRequest): Promise<AiGenerateRe
 
                 const output = await session.generateChat(messages, {
                     maxTokens: 512,
-                    // Use correct defaults: temperature=1.0, top_k=64, top_p=0.95, min_p=0.0
-                    temperature: 0.7, // Lower temp for consistency in this app
+                    // Use correct defaults: temperature=0.7, top_k=40, top_p=0.9
+                    temperature: 0.7,
                     topK: 40,
                     topP: 0.9,
                     onToken,
@@ -76,26 +76,20 @@ export async function generateText(req: AiGenerateRequest): Promise<AiGenerateRe
                     modelId,
                 };
             } catch (llamaError: any) {
-                // Fall through to standard model loading if llama.cpp fails
-                // Only log if it's not a "module not found" error (expected during development)
-                const errorMsg = llamaError?.message || String(llamaError);
-                if (
-                    !errorMsg.includes('module not found') &&
-                    !errorMsg.includes('Cannot find module') &&
-                    !errorMsg.includes('previously failed to load')
-                ) {
-                    // Only log once per error type to avoid spam
-                    console.warn('llama.cpp inference failed, trying standard API:', errorMsg);
-                }
-                // Don't retry - fall through to react-native-ai if we had it integrated
-                // For now, in this app we primarily rely on llama.rn
+                console.error('Llama inference failed:', llamaError);
                 throw llamaError;
             }
+        } else {
+            return {
+                text: 'Model weights found but verification failed.',
+                raw: null,
+                modelId
+            };
         }
     }
 
     return {
-        text: 'Model weights not found or inference failed.',
+        text: 'Model configuration not found.',
         raw: null,
         modelId
     };
