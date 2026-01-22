@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yeet.ghostwallet"
+      "bundleIdentifier": "com.yeetlabs.ghostwallet"
     },
     "android": {
       "adaptiveIcon": {
