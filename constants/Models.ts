@@ -42,6 +42,13 @@ export const STOP_WORDS = [
     '<|im_end|>',
     '<|EOT|>',
     '<|END_OF_TURN_TOKEN|>',
+    '<|user|>',
+    '<|assistant|>',
+    '<|system|>',
+    '### User:',
+    '### Assistant:',
+    'User:',
+    'Assistant:',
 ];
 
 export function getModelInfo(id: string): ModelInfo | undefined {

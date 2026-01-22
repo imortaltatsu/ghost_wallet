@@ -1,4 +1,3 @@
-import { LlamaService } from '@/services/llm/LlamaService';
 import { useChatStore } from '@/store/chatStore';
 import { useLLMStore } from '@/store/llmStore';
 import { useTTSStore } from '@/store/ttsStore';
@@ -31,11 +30,8 @@ export function ChatContainer() {
         currentModel,
         modelConfig,
         isModelLoaded,
-        setModelLoaded,
         setError,
     } = useLLMStore();
-
-    const llamaService = LlamaService.getInstance();
 
     useEffect(() => {
         loadHistory();
@@ -83,22 +79,20 @@ export function ChatContainer() {
         startStreaming(assistantMessageId);
 
         try {
-            // Get conversation history
-            const conversationMessages = [
-                ...messages,
-                { id: 'temp', role: 'user' as const, content: text, timestamp: Date.now() },
-            ];
+            // Use unified text generation service
+            const { generateText } = require('@/services/llm/textGenerator');
 
-            // Generate response with streaming
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             let fullResponse = '';
-            await llamaService.completion(
-                conversationMessages,
-                modelConfig,
-                (token) => {
+            await generateText({
+                prompt: text,
+                systemPrompt: "You are a helpful AI assistant.",
+                modelId: currentModel.id,
+                onToken: (token: string) => {
                     fullResponse += token;
                     updateStreamingMessage(token);
                 }
-            );
+            });
 
             stopStreaming();
 
@@ -159,7 +153,7 @@ export function ChatContainer() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#fff', // Or transparent if background handled by parent
     },
     messageList: {
         paddingVertical: 16,
