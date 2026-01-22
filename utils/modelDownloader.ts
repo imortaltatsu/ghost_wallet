@@ -114,6 +114,19 @@ export class ModelDownloader {
         return exists ? modelPath : null;
     }
 
+    // Checking if weights exist for a specific model config
+    static async weightsExist(modelId: string, quantization?: string): Promise<boolean> {
+        // We currently ignore quantization in filename for simplicity but preserving API signature
+        const path = await this.getModelPath(modelId);
+        return !!path;
+    }
+
+    static async getWeightsPath(modelId: string, quantization?: string): Promise<string> {
+        const path = await this.getModelPath(modelId);
+        if (!path) throw new Error(`Weights not found for model ${modelId}`);
+        return path;
+    }
+
     static async getDownloadedModels(): Promise<string[]> {
         const modelDir = `${RNFS.DocumentDirectoryPath}/models`;
         const dirExists = await RNFS.exists(modelDir);

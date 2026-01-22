@@ -79,7 +79,7 @@ export class LlamaService {
                 },
                 (data) => {
                     // Token streaming callback
-                    const { token } = datra;
+                    const { token } = data;
                     if (token && onToken) {
                         accumulatedText += token;
                         onToken(token);
@@ -121,4 +121,49 @@ export class LlamaService {
     getCurrentModelPath(): string | null {
         return this.currentModelPath;
     }
+
+    // Adapter for LlamaLoader API compatibility
+    async getSession(modelId: string, quantization?: string): Promise<{
+        generateChat: (messages: any[], options?: any) => Promise<string>;
+    }> {
+        // Reuse existing context if it matches expectations or ensure initialized
+        // Note: Real implementation would check if loaded model matches request
+        // For now we assume the Service is managing the active model state
+
+        return {
+            generateChat: async (messages: any[], options?: any) => {
+                // Map session API to completion API
+                // Convert ChatMessage[] to internal format
+                const formattedMessages = messages.map(m => ({
+                    role: m.role,
+                    content: m.content
+                }));
+
+                const result = await this.completion(
+                    formattedMessages,
+                    {
+                        // Default config items
+                        nPredict: options?.maxTokens,
+                        temperature: options?.temperature,
+                        topP: options?.topP,
+                        topK: options?.topK,
+                        stopWords: options?.onToken ? undefined : undefined, // Handled inside completion
+                        // Add other required ModelConfig properties with defaults
+                        systemPrompt: '',
+                        contextSize: 2048,
+                        nGpuLayers: 0,
+                        repeatPenalty: 1.1,
+                        modelPath: this.currentModelPath || '',
+                        modelName: modelId
+                    },
+                    options?.onToken
+                );
+
+                return result;
+            }
+        };
+    }
 }
+
+// Export singleton as llamaLoader for compatibility
+export const llamaLoader = LlamaService.getInstance();
