@@ -100,17 +100,39 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
     loadAvailableModels: async () => {
         try {
+            // Migration: Check for legacy lfm2-350m-q4.gguf and rename to lfm2-350m.gguf
+            const fs = require('react-native-fs');
+            const modelDir = `${fs.DocumentDirectoryPath}/models`;
+            const legacyPath = `${modelDir}/lfm2-350m-q4.gguf`;
+            const newPath = `${modelDir}/lfm2-350m.gguf`;
+
+            if ((await fs.exists(legacyPath)) && !(await fs.exists(newPath))) {
+                console.log('Migrating legacy model file...');
+                await fs.moveFile(legacyPath, newPath);
+                console.log('Migration complete.');
+            }
+
             const downloadedModelIds = await ModelDownloader.getDownloadedModels();
+            console.log('Downloaded models:', downloadedModelIds);
 
             const updatedModels = RECOMMENDED_MODELS.map((model) => ({
                 ...model,
                 downloaded: downloadedModelIds.includes(model.id),
                 localPath: downloadedModelIds.includes(model.id)
-                    ? `${require('react-native-fs').DocumentDirectoryPath}/models/${model.id}.gguf`
+                    ? `${fs.DocumentDirectoryPath}/models/${model.id}.gguf`
                     : undefined,
             }));
 
             set({ availableModels: updatedModels });
+
+            // Auto-set current model if downloaded is found
+            const current = get().currentModel;
+            if (!current) {
+                const downloaded = updatedModels.find(m => m.downloaded);
+                if (downloaded) {
+                    set({ currentModel: downloaded });
+                }
+            }
         } catch (error) {
             console.error('Failed to load available models:', error);
         }
