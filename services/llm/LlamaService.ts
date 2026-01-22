@@ -60,16 +60,15 @@ export class LlamaService {
         }
 
         try {
-            const formattedMessages = messages.map(msg => ({
-                role: msg.role,
-                content: msg.content,
-            }));
+            // Apply chat template to get raw prompt
+            const { ChatTemplate } = require('../../utils/chatTemplate');
+            const prompt = ChatTemplate.applyTemplate(messages);
 
             let accumulatedText = '';
 
             const result = await this.context.completion(
                 {
-                    messages: formattedMessages,
+                    prompt,
                     n_predict: config.nPredict,
                     temperature: config.temperature,
                     top_p: config.topP,
