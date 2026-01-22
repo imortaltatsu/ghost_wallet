@@ -31,9 +31,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     addMessage: (message) => {
         const newMessage: Message = {
-            ...message,
-            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Default if not provided
             timestamp: Date.now(),
+            ...message, // Allows overriding id and timestamp if passed in message object
         };
 
         set((state) => ({

@@ -74,6 +74,7 @@ export function ChatContainer() {
         // Create assistant message placeholder
         const assistantMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         addMessage({
+            id: assistantMessageId,
             role: 'assistant',
             content: '',
         });
