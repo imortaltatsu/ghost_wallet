@@ -42,13 +42,17 @@ export default function AIChatScreen() {
     // Auto-initialize weights effect
     useEffect(() => {
         const init = async () => {
-            // 1. Load available models list
+            // 0. Load persisted settings first
+            await useLLMStore.getState().loadSettings();
+
+            // 1. Load available models list (verifies files)
             await loadAvailableModels();
 
             // 2. Auto-select recommended model if none selected
-            if (!currentModel) {
+            const state = useLLMStore.getState();
+            if (!state.currentModel) {
                 // Use getState() logic equivalent - accessing from hook due to closure
-                const recommended = availableModels.find(m => m.recommended) || availableModels[0];
+                const recommended = state.availableModels.find(m => m.recommended) || state.availableModels[0];
                 if (recommended) {
                     setCurrentModel(recommended);
                 }
