@@ -79,7 +79,7 @@ export class LlamaService {
                 },
                 (data) => {
                     // Token streaming callback
-                    const { token } = data;
+                    const { token } = datra;
                     if (token && onToken) {
                         accumulatedText += token;
                         onToken(token);
