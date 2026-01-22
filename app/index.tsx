@@ -12,17 +12,18 @@ import {
     Dimensions,
     Platform,
     Pressable,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
 export default function AIChatScreen() {
     const [isInitializing, setIsInitializing] = useState(false);
+    const insets = useSafeAreaInsets();
 
     const {
         currentModel,
@@ -127,34 +128,32 @@ export default function AIChatScreen() {
 
     // Glassmorphism Header Component
     const Header = () => (
-        <BlurView intensity={Platform.OS === 'ios' ? 80 : 0} tint="light" style={styles.headerGlass}>
-            <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-                <View style={styles.headerContent}>
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.headerTitle}>Ghost AI</Text>
-                        {isModelLoaded && (
-                            <View style={styles.activeBadge}>
-                                <View style={[styles.activeDot, { backgroundColor: '#34C759' }]} />
-                            </View>
-                        )}
-                    </View>
-
-                    <View style={styles.headerActions}>
-                        <Pressable
-                            onPress={handleClearHistory}
-                            style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
-                        >
-                            <Ionicons name="trash-outline" size={22} color="#1A1A1A" />
-                        </Pressable>
-                        <Pressable
-                            onPress={handleSettings}
-                            style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
-                        >
-                            <Ionicons name="options-outline" size={22} color="#1A1A1A" />
-                        </Pressable>
-                    </View>
+        <BlurView intensity={Platform.OS === 'ios' ? 80 : 0} tint="light" style={[styles.headerGlass, { paddingTop: insets.top }]}>
+            <View style={styles.headerContent}>
+                <View style={styles.titleContainer}>
+                    <Text style={styles.headerTitle}>Ghost AI</Text>
+                    {isModelLoaded && (
+                        <View style={styles.activeBadge}>
+                            <View style={[styles.activeDot, { backgroundColor: '#34C759' }]} />
+                        </View>
+                    )}
                 </View>
-            </SafeAreaView>
+
+                <View style={styles.headerActions}>
+                    <Pressable
+                        onPress={handleClearHistory}
+                        style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+                    >
+                        <Ionicons name="trash-outline" size={22} color="#1A1A1A" />
+                    </Pressable>
+                    <Pressable
+                        onPress={handleSettings}
+                        style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+                    >
+                        <Ionicons name="options-outline" size={22} color="#1A1A1A" />
+                    </Pressable>
+                </View>
+            </View>
             {Platform.OS === 'android' && <View style={styles.androidHeaderBorder} />}
         </BlurView>
     );
@@ -166,7 +165,7 @@ export default function AIChatScreen() {
 
             <Header />
 
-            <View style={styles.contentContainer}>
+            <View style={[styles.contentContainer, { paddingTop: Platform.OS === 'ios' ? insets.top + 50 : 60 }]}>
                 {!currentModel ? (
                     <View style={styles.stateContainer}>
                         <View style={styles.iconContainer}>
@@ -215,7 +214,6 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         flex: 1,
-        paddingTop: Platform.OS === 'ios' ? 0 : 60, // Android header offset handled by View structure usually, but manual spacing here
     },
     headerGlass: {
         position: 'absolute',
@@ -230,9 +228,6 @@ const styles = StyleSheet.create({
     androidHeaderBorder: {
         height: 1,
         backgroundColor: 'rgba(0,0,0,0.05)'
-    },
-    headerSafeArea: {
-        backgroundColor: 'transparent',
     },
     headerContent: {
         height: 50,
@@ -281,7 +276,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 32,
-        marginTop: 60, // Offset for header
     },
     iconContainer: {
         width: 80,
