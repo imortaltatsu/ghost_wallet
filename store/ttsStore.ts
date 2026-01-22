@@ -1,75 +1,72 @@
-import { DEFAULT_VOICE } from '@/constants/TTSVoices';
-import { ChatSettings } from '@/types/chat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Speech from 'expo-speech';
 import { create } from 'zustand';
 
-interface TTSStore extends ChatSettings {
+interface TTSStore {
+    isEnabled: boolean;
     isSpeaking: boolean;
+    volume: number;
 
     // Actions
-    setTTSEnabled: (enabled: boolean) => void;
-    setSelectedVoice: (voiceId: string) => void;
-    setAutoPlayTTS: (autoPlay: boolean) => void;
-    setStreamingEnabled: (enabled: boolean) => void;
-    setIsSpeaking: (speaking: boolean) => void;
+    setEnabled: (enabled: boolean) => void;
+    setSpeaking: (speaking: boolean) => void;
+    speak: (text: string) => void;
+    stop: () => void;
     loadSettings: () => Promise<void>;
-    saveSettings: () => Promise<void>;
 }
 
 const STORAGE_KEY = '@ghostwallet:tts_settings';
 
 export const useTTSStore = create<TTSStore>((set, get) => ({
-    ttsEnabled: false,
-    selectedVoice: DEFAULT_VOICE,
-    autoPlayTTS: true,
-    streamingEnabled: true,
+    isEnabled: false, // Default off
     isSpeaking: false,
+    volume: 1.0,
 
-    setTTSEnabled: (enabled) => {
-        set({ ttsEnabled: enabled });
-        get().saveSettings();
+    setEnabled: (enabled) => {
+        set({ isEnabled: enabled });
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ isEnabled: enabled }));
+        if (!enabled) {
+            get().stop();
+        }
     },
 
-    setSelectedVoice: (voiceId) => {
-        set({ selectedVoice: voiceId });
-        get().saveSettings();
+    setSpeaking: (speaking) => set({ isSpeaking: speaking }),
+
+    speak: (text) => {
+        const { isEnabled } = get();
+        if (!isEnabled || !text) return;
+
+        // Stop current speech before starting new
+        Speech.stop();
+        set({ isSpeaking: true });
+
+        Speech.speak(text, {
+            onDone: () => set({ isSpeaking: false }),
+            onStopped: () => set({ isSpeaking: false }),
+            onError: (error) => {
+                console.error('TTS Error:', error);
+                set({ isSpeaking: false });
+            },
+            // Android/iOS specific options for better quality
+            pitch: 1.0,
+            rate: 0.9,
+        });
     },
 
-    setAutoPlayTTS: (autoPlay) => {
-        set({ autoPlayTTS: autoPlay });
-        get().saveSettings();
-    },
-
-    setStreamingEnabled: (enabled) => {
-        set({ streamingEnabled: enabled });
-        get().saveSettings();
-    },
-
-    setIsSpeaking: (speaking) => {
-        set({ isSpeaking: speaking });
+    stop: () => {
+        Speech.stop();
+        set({ isSpeaking: false });
     },
 
     loadSettings: async () => {
         try {
             const stored = await AsyncStorage.getItem(STORAGE_KEY);
             if (stored) {
-                const settings = JSON.parse(stored);
-                set(settings);
+                const { isEnabled } = JSON.parse(stored);
+                set({ isEnabled });
             }
         } catch (error) {
             console.error('Failed to load TTS settings:', error);
-        }
-    },
-
-    saveSettings: async () => {
-        try {
-            const { ttsEnabled, selectedVoice, autoPlayTTS, streamingEnabled } = get();
-            await AsyncStorage.setItem(
-                STORAGE_KEY,
-                JSON.stringify({ ttsEnabled, selectedVoice, autoPlayTTS, streamingEnabled })
-            );
-        } catch (error) {
-            console.error('Failed to save TTS settings:', error);
         }
     },
 }));

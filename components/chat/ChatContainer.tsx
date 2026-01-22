@@ -1,6 +1,7 @@
 import { LlamaService } from '@/services/llm/LlamaService';
 import { useChatStore } from '@/store/chatStore';
 import { useLLMStore } from '@/store/llmStore';
+import { useTTSStore } from '@/store/ttsStore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     FlatList,
@@ -49,6 +50,15 @@ export function ChatContainer() {
         }
     }, [messages.length]);
 
+    const { isEnabled: isTTSEnabled, speak, stop: stopTTS } = useTTSStore();
+
+    useEffect(() => {
+        // Stop speech when leaving chat
+        return () => {
+            stopTTS();
+        };
+    }, []);
+
     const handleSendMessage = async (text: string) => {
         if (!currentModel || !isModelLoaded) {
             setError('Please select and load a model first');
@@ -79,15 +89,22 @@ export function ChatContainer() {
             ];
 
             // Generate response with streaming
+            let fullResponse = '';
             await llamaService.completion(
                 conversationMessages,
                 modelConfig,
                 (token) => {
+                    fullResponse += token;
                     updateStreamingMessage(token);
                 }
             );
 
             stopStreaming();
+
+            // Speak the response if TTS is enabled
+            if (isTTSEnabled && fullResponse) {
+                speak(fullResponse);
+            }
         } catch (error) {
             console.error('Error generating response:', error);
             setError(error instanceof Error ? error.message : 'Generation failed');
