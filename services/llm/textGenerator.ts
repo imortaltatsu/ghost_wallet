@@ -63,10 +63,11 @@ export async function generateText(req: AiGenerateRequest): Promise<AiGenerateRe
 
                 const output = await session.generateChat(messages, {
                     maxTokens: 512,
-                    // Use correct defaults: temperature=0.7, top_k=40, top_p=0.9
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.9,
+                    // LFM2 Recommended parameters
+                    temperature: 0.3,
+                    minP: 0.15,
+                    repeatPenalty: 1.05,
+                    topP: 1.0, // Default to 1.0 when using minP
                     onToken,
                 });
 

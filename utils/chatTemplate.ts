@@ -1,7 +1,7 @@
 /**
  * Chat Template Handler
- * Handles Jinja2-style chat templates for Granite 4.0 models
- * Based on IBM Granite chat format
+ * Handles ChatML-style chat templates for LiquidAI LFM2 models
+ * Format: <|startoftext|><|im_start|>system\n{content}<|im_end|>\n<|im_start|>user\n{content}<|im_end|>\n...
  */
 
 export interface ChatMessage {
@@ -14,32 +14,31 @@ export interface ChatTemplateOptions {
     tools?: any[]; // Tool definitions for function calling
 }
 
-/**
- * Granite 4.0 Chat Template
- * Format: <|start_of_role|>{role}<|end_of_role|>{content}<|end_of_text|>
- */
 export class ChatTemplate {
     /**
-     * Apply Granite chat template to messages
+     * Apply LFM2 ChatML template to messages
      */
     static applyTemplate(
         messages: ChatMessage[],
         options: ChatTemplateOptions = {}
     ): string {
-        const { addGenerationPrompt = true, tools } = options;
+        const { addGenerationPrompt = true } = options;
 
-        let result = '';
+        // LFM2 starts with startoftext
+        let result = '<|startoftext|>';
+
+        // Helper to formatting a message
+        const formatMessage = (role: string, content: string) => {
+            return `<|im_start|>${role}\n${content}<|im_end|>\n`;
+        }
 
         // Add system message if present
         const systemMessage = messages.find((m) => m.role === 'system');
         if (systemMessage) {
-            result += `<|start_of_role|>system<|end_of_role|>${systemMessage.content}<|end_of_text|>\n`;
-        } else if (tools && tools.length > 0) {
-            // Default system prompt for tool calling
-            result += `<|start_of_role|>system<|end_of_role|>You are a helpful assistant with access to the following tools. You may call one or more tools to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>\n${JSON.stringify(tools, null, 2)}\n</tools>\n\nFor each tool call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>. If a tool does not exist in the provided list of tools, notify the user that you do not have the ability to fulfill the request.<|end_of_text|>\n`;
+            result += formatMessage('system', systemMessage.content);
         } else {
             // Default system prompt
-            result += `<|start_of_role|>system<|end_of_role|>You are a helpful assistant. Please ensure responses are professional, accurate, and safe.<|end_of_text|>\n`;
+            result += formatMessage('system', 'You are a helpful assistant trained by Liquid AI.');
         }
 
         // Add user and assistant messages
@@ -47,17 +46,15 @@ export class ChatTemplate {
             if (message.role === 'system') {
                 continue; // Already handled above
             }
-
-            const roleTag = message.role === 'user' ? 'user' : 'assistant';
-            result += `<|start_of_role|>${roleTag}<|end_of_role|>${message.content}<|end_of_text|>\n`;
+            result += formatMessage(message.role, message.content);
         }
 
         // Add generation prompt if needed
         if (addGenerationPrompt && messages[messages.length - 1]?.role === 'user') {
-            result += `<|start_of_role|>assistant<|end_of_role|>`;
+            result += `<|im_start|>assistant\n`;
         }
 
-        return result.trim();
+        return result; // No trim() to preserve trailing newline logic if needed
     }
 
     /**
@@ -66,19 +63,18 @@ export class ChatTemplate {
     static parseResponse(response: string): string {
         // Remove template tokens
         let cleaned = response
-            .replace(/<\|start_of_role\|>/g, '')
-            .replace(/<\|end_of_role\|>/g, '')
-            .replace(/<\|end_of_text\|>/g, '')
-            .replace(/<\|start_of_text\|>/g, '');
+            .replace(/<\|startoftext\|>/g, '')
+            .replace(/<\|im_start\|>/g, '')
+            .replace(/<\|im_end\|>/g, '');
 
         // Extract assistant content if wrapped
-        const assistantMatch = cleaned.match(/assistant(.+)/s);
+        const assistantMatch = cleaned.match(/assistant\n(.+)/s);
         if (assistantMatch) {
             cleaned = assistantMatch[1].trim();
         }
 
-        // Remove role tags
-        cleaned = cleaned.replace(/^(system|user|assistant):\s*/gm, '');
+        // Remove role tags cleanup just in case
+        cleaned = cleaned.replace(/^(system|user|assistant)\n/gm, '');
 
         return cleaned.trim();
     }
