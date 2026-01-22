@@ -29,8 +29,10 @@ export function ChatInput({ onSend, disabled, isLoading }: ChatInputProps) {
                 multiline
                 maxLength={2000}
                 editable={!disabled && !isLoading}
-                onSubmitEditing={handleSend}
+                returnKeyType="send"
                 blurOnSubmit={false}
+                autoCorrect={true}
+                autoCapitalize="sentences"
             />
 
             <Pressable
