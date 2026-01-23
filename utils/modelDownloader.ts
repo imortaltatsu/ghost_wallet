@@ -34,6 +34,8 @@ export class ModelDownloader {
             const downloadResult = RNFS.downloadFile({
                 fromUrl: model.url,
                 toFile: modelPath,
+                background: true, // Enable background downloading for iOS
+                discretionary: true, // Allow OS to optimize scheduling
                 progressInterval: 500,
                 progress: (res) => {
                     const progress: DownloadProgress = {
