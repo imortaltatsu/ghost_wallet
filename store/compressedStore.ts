@@ -12,6 +12,13 @@ import {
 const COMPRESSION_RPC_URL = DEVNET_COMPRESSION_RPC_URL;
 const COMPRESSION_API_URL = DEVNET_COMPRESSION_API_URL;
 
+/** Error messages that mean the RPC/indexer doesn't support ZK Compression (e.g. public RPC or missing EXPO_PUBLIC_COMPRESSION_API_URL in release). */
+const COMPRESSION_INDEXER_REQUIRED_REGEX =
+  /method not found|failed to get info for compressed accounts|failed to get a slot|failed to get.*slot/i;
+
+const COMPRESSION_INDEXER_REQUIRED_MSG =
+  "Compression indexer required. Set EXPO_PUBLIC_COMPRESSION_API_URL in .env to a ZK Compression API URL (e.g. Helius). See https://www.helius.dev/docs/api-reference/zk-compression";
+
 /** Interval for background refresh of private SOL balance (cache is current state; this keeps it updated). */
 const PRIVATE_BALANCE_REFRESH_INTERVAL_MS = 30_000;
 
@@ -473,7 +480,10 @@ export const useCompressedStore = create<CompressedState>((set, get) => {
         PRIVATE_BALANCE_REFRESH_INTERVAL_MS,
       );
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const raw = getErrorMessage(e);
+      const msg = COMPRESSION_INDEXER_REQUIRED_REGEX.test(raw)
+        ? COMPRESSION_INDEXER_REQUIRED_MSG
+        : raw;
       set({ error: msg, isRefreshing: false });
     }
   },
@@ -564,12 +574,8 @@ export const useCompressedStore = create<CompressedState>((set, get) => {
       return sig;
     } catch (e) {
       const raw = getErrorMessage(e);
-      const isMethodNotFound =
-        /method not found|failed to get info for compressed accounts/i.test(
-          raw,
-        );
-      const msg = isMethodNotFound
-        ? "Compression indexer required. Set EXPO_PUBLIC_COMPRESSION_API_URL in .env to a ZK Compression API URL (e.g. Helius). See https://www.helius.dev/docs/api-reference/zk-compression"
+      const msg = COMPRESSION_INDEXER_REQUIRED_REGEX.test(raw)
+        ? COMPRESSION_INDEXER_REQUIRED_MSG
         : raw;
       set({ transferError: msg });
       throw new Error(msg);

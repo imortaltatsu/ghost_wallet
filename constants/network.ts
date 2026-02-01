@@ -1,28 +1,32 @@
-/**
- * Network config: Devnet.
- * Single place to switch RPC for wallet and compression (stateless.js).
- */
-export const DEVNET_RPC_URL = "https://api.devnet.solana.com";
+import Constants from "expo-constants";
+
+const PUBLIC_DEVNET = "https://api.devnet.solana.com";
 
 /**
- * Devnet RPC for ZK Compression (stateless.js / compressed-token).
+ * Helius (or other ZK Compression–capable) RPC URL. Required for ZK: wallet and compression
+ * both use this when set so getSlot, getCompressedBalanceByOwner, etc. work.
+ * From .env EXPO_PUBLIC_COMPRESSION_API_URL; in release, from app.config.js extra (baked at build time).
+ * Example: https://devnet.helius-rpc.com?api-key=YOUR_KEY
  */
-export const DEVNET_COMPRESSION_RPC_URL = "https://api.devnet.solana.com";
+const fromExtra =
+  (Constants.expoConfig as { extra?: { compressionApiUrl?: string } })?.extra
+    ?.compressionApiUrl;
+const fromEnv = (process as any).env?.EXPO_PUBLIC_COMPRESSION_API_URL;
+const heliusOrZkUrl =
+  (typeof fromExtra === "string" && fromExtra.trim() ? fromExtra.trim() : undefined) ||
+  (typeof fromEnv === "string" && fromEnv.trim() ? fromEnv.trim() : undefined);
 
-/**
- * Optional ZK Compression–capable RPC URL (e.g. Helius). Used per Light Protocol:
- * when set, createRpc(endpoint, compressionApiEndpoint, proverEndpoint) is called
- * with this URL for all three so RPC, Photon (compression), and Prover use one endpoint.
- * If unset: we use public devnet for RPC only; compression methods (balance, transfer) fail until set.
- * If set: balance, compress, and private send work; that provider can see (address, balance).
- * Example: https://devnet.helius-rpc.com?api-key=YOUR_KEY — see zkcompression.com/get-started/intro-to-development
- */
-export const DEVNET_COMPRESSION_API_URL: string | undefined =
-  typeof process !== "undefined" &&
-  (process as any).env?.EXPO_PUBLIC_COMPRESSION_API_URL;
+/** Devnet RPC for wallet (balance, send, etc.). Uses Helius when set so ZK and wallet share one RPC. */
+export const DEVNET_RPC_URL = heliusOrZkUrl ?? PUBLIC_DEVNET;
 
-/** True only when user has configured an indexer; otherwise we don't query balance from any server. */
-export const USE_COMPRESSION_INDEXER = Boolean(DEVNET_COMPRESSION_API_URL);
+/** Same as DEVNET_RPC_URL when Helius set; used by createRpc for compression. */
+export const DEVNET_COMPRESSION_API_URL: string | undefined = heliusOrZkUrl;
+
+/** Fallback when Helius not set (compression will fail until EXPO_PUBLIC_COMPRESSION_API_URL is set). */
+export const DEVNET_COMPRESSION_RPC_URL = PUBLIC_DEVNET;
+
+/** True when Helius/compression URL is set; compression and wallet both use it. */
+export const USE_COMPRESSION_INDEXER = Boolean(heliusOrZkUrl);
 
 /** Solscan devnet transaction URL (e.g. https://solscan.io/tx/{sig}?cluster=devnet). */
 export function getSolscanTxUrl(signature: string): string {

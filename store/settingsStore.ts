@@ -1,7 +1,7 @@
+import { DEVNET_RPC_URL } from "@/constants/network";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 
-const DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
 
 const STORAGE_KEY = "@ghostwallet:settings";

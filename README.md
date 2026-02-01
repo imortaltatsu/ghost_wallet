@@ -2,7 +2,7 @@
 
 AI-powered privacy wallet: Solana wallet with on-device AI (llama.rn) and conversational tools for balance, send, shield, and private send.
 
-**Milestone 2: Agentic Privacy Wallet** — Wallet + shielded (ZK Compression) flows + on-device AI that can run wallet actions from chat (same data as Wallet screen). See **[MILESTONE.md](./MILESTONE.md)** for scope and deliverables.
+**Hackathon submission** — GhostWallet is built as a hackathon project: agentic privacy wallet with on-device LLM, ZK Compression (shielded balance / private send), and MCP-style tools in chat. See **[MILESTONE.md](./MILESTONE.md)** for scope and deliverables.
 
 ## Features
 
@@ -14,6 +14,18 @@ AI-powered privacy wallet: Solana wallet with on-device AI (llama.rn) and conver
 ✅ **Chat history** – Persistent conversations  
 ✅ **Dark mode** – Supported across app  
 ✅ **GPU acceleration** – OpenCL on Android
+
+## Privacy
+
+GhostWallet is designed to be **privacy-oriented** end to end:
+
+- **On-device AI** — The LLM runs locally (llama.rn). Your chat and wallet-related prompts never leave the device; no third-party AI service sees your messages or balance.
+- **Keys stay on device** — Wallet keys (and optional recovery phrase) are stored locally. There is no central sign-up or server-held keys; you own the keys.
+- **Shielded balance & private send** — ZK Compression lets you hold and move SOL in a **shielded** form (compressed accounts). You can “shield” public SOL into private SOL and use **private send** so transfers don’t expose amounts or full history on the public chain in the same way as plain transfers.
+- **You choose the RPC** — For devnet, you set your own ZK-capable RPC (e.g. Helius) in `.env`. The RPC can see address and balance queries you make to it; using your own API key lets you control and reason about that provider.
+- **Local-only data** — Chat history and address book are stored on the device (e.g. AsyncStorage). No mandatory cloud sync or account linking for wallet or chat.
+
+So: **no cloud AI, no server-held keys, optional shielded SOL flows, and local-first data** make the app privacy-oriented by design.
 
 ## Quick Start
 
@@ -73,6 +85,33 @@ huggingface-cli download LiquidAI/LFM2.5-1.2B-Instruct-GGUF LFM2.5-1.2B-Instruct
 huggingface-cli download LiquidAI/LFM2.5-1.2B-Thinking-GGUF LFM2.5-1.2B-Thinking-Q4_0.gguf --local-dir .
 ```
 
+## Installation (release builds)
+
+Pre-built **APK** (Android) and **IPA** (iOS) are attached to [GitHub Releases](https://github.com/imortaltatsu/ghost_wallet/releases) (e.g. **milestone-2**). Download and install as follows.
+
+### Android (APK)
+
+1. Download **app-release.apk** from the [latest release](https://github.com/imortaltatsu/ghost_wallet/releases).
+2. On your device: **Settings → Security** (or **Apps**) → enable **Install unknown apps** for your browser or file manager.
+3. Open the downloaded APK and confirm install.
+
+Alternatively, with [ADB](https://developer.android.com/studio/command-line/adb):  
+`adb install app-release.apk`
+
+### iOS (IPA)
+
+We recommend **[iLoader](https://iloader.site/)** to install the IPA on your iPhone or iPad without Xcode:
+
+1. **On your computer:** Download [iLoader](https://iloader.site/) (Windows, macOS, or Linux) and install it.
+2. **On your iPhone/iPad:** Enable **Developer Mode** (Settings → Privacy & Security → Developer Mode) if you’re on iOS 16 or later.
+3. Connect the device via USB, open iLoader, sign in with your Apple ID, then drag and drop **GhostWallet.ipa** (downloaded from the release) or use iLoader’s install flow to sideload the app.
+
+iLoader is open-source and supports sideloading IPA files without a Mac or Xcode. See [iLoader](https://iloader.site/) and [GitHub – nab138/iloader](https://github.com/nab138/iloader) for details and updates.
+
+**Alternative:** Install via Xcode (Window → Devices and Simulators → select device → add the IPA) or Apple Configurator if you have them.
+
+---
+
 ## Building release builds
 
 - **Android APK:** `bun run android:apk` → `android/app/build/outputs/apk/release/app-release.apk`
@@ -82,26 +121,114 @@ See **[BUILD.md](./BUILD.md)** for details (Android SDK, iOS teamID/export optio
 
 ## Architecture
 
+GhostWallet is a React Native (Expo) app with three main layers: **UI** (screens and chat), **agent layer** (chat session + tools + LLM), and **wallet/chain** (Solana RPC, ZK Compression). All wallet-related tools use the same stores as the Wallet UI so balance and actions stay consistent.
+
+### High-level flow
+
+```mermaid
+flowchart LR
+  subgraph User
+    U[User]
+  end
+  subgraph Chat["Chat path"]
+    U --> ChatUI[Chat UI]
+    ChatUI --> Session[ChatSession]
+    Session --> LLM[LlamaService\non-device]
+    LLM -->|tool call| Tools[walletTools]
+    Tools --> Store[(Stores)]
+    Tools --> Session
+  end
+  subgraph Wallet["Wallet path"]
+    U --> WalletUI[Wallet screens]
+    WalletUI --> Store
+    Store --> WalletUI
+  end
+  Store --> RPC[Helius / Solana RPC]
+  RPC --> ZK[ZK Compression]
+  ZK --> Store
+```
+
+1. **User** talks in AI Chat or uses Wallet screens (Send, Receive, Shielded, Private send).
+2. **Chat path:** User message → `ChatSession` (SDK) → prompt + tool definitions → **LlamaService** (on-device LLM) → streamed tokens; when the model calls a tool, **ToolRegistry** runs the handler (e.g. `walletTools`) → result is formatted and appended to the conversation.
+3. **Wallet path:** Screens read from **walletStore**, **compressedStore** / **shieldedStore**, **addressBookStore**; actions (send, shield, private send) call the same stores and RPC/compression services that the chat tools use.
+4. **RPC:** Devnet uses a single Helius (or ZK-capable) URL when set (`constants/network.ts`); wallet and ZK compression share it so `getSlot` and compressed balance work in debug and release.
+
+### Layer stack
+
+```mermaid
+flowchart TB
+  subgraph UI["UI layer"]
+    App[app/ screens]
+    ChatComp[components/chat]
+  end
+  subgraph SDK["Agent / SDK layer"]
+    ChatSession[sdk/chat ChatSession]
+    ToolReg[sdk/tools executeTool]
+  end
+  subgraph Services["Services"]
+    Llama[llm/ LlamaService]
+    WalletTools[tools/ walletTools]
+    RPC[rpc/ solanaRpcClient]
+  end
+  subgraph State["State"]
+    Store[(store/ Zustand)]
+  end
+  subgraph External["External"]
+    Solana[Solana RPC]
+    ZK[ZK Compression API]
+  end
+  App --> ChatSession
+  ChatComp --> ChatSession
+  ChatSession --> Llama
+  ChatSession --> ToolReg
+  ToolReg --> WalletTools
+  WalletTools --> Store
+  App --> Store
+  WalletTools --> RPC
+  RPC --> Solana
+  WalletTools --> ZK
+  ZK --> Solana
+```
+
+### Layers
+
+| Layer | Role |
+|-------|------|
+| **app/** | Screens: home (chat), wallet (send, receive, private-send, address-book, shielded), settings (AI, theme, network, wallet backup). |
+| **components/chat/** | Chat UI: `ChatContainer`, `MessageBubble`, `ChatInput`, `LlmOutputRenderer` (streaming). |
+| **sdk/chat/** | `ChatSession`: turns history + tools into ChatML, runs LLM, handles tool calls and response formatting. |
+| **sdk/tools/** | Tool registration, `getToolsForChatML`, `executeTool` (dispatches to wallet/MCP tools). |
+| **services/llm/** | `LlamaService` (llama.rn), `textGenerator`; loads GGUF, runs inference on device. |
+| **services/tools/** | `walletTools`: get_balance, get_private_balance, send_sol, shield_funds, private_send, get_contacts; use `walletBalanceData` and wallet/compressed stores. |
+| **services/mcp/** | Loads MCP tool definitions (JSON) for chat. |
+| **services/rpc/** | Solana RPC client (connection from settings store). |
+| **store/** | Zustand: `walletStore`, `compressedStore`, `shieldedStore`, `walletBalanceData`, `chatStore`, `llmStore`, `addressBookStore`, `settingsStore`. Single source of truth for balance and wallet state. |
+| **constants/** | `network.ts` (RPC URLs, Helius for ZK), `Models.ts` (model list), theme. |
+| **utils/** | `chatTemplate`, `chatml`, `modelDownloader`, `polyfills`. |
+
+### Project layout
+
 ```
 ghostwallet/
-├── app/
-│   ├── index.tsx, _layout.tsx
+├── app/                    # Screens (Expo Router)
+│   ├── index.tsx, _layout.tsx, modal.tsx
 │   ├── settings/ai-settings.tsx
-│   └── wallet/                 # Send, receive, private-send, address-book, shielded
-├── components/chat/             # ChatContainer, MessageBubble, ChatInput, LlmOutputRenderer
-├── sdk/chat/                    # ChatSession, tool response formatting
-├── sdk/tools/                   # Tool registration, getToolsForChatML, executeTool
+│   └── wallet/             # send, receive, private-send, address-book, shielded
+├── components/chat/         # ChatContainer, MessageBubble, ChatInput, LlmOutputRenderer
+├── sdk/
+│   ├── chat/               # ChatSession (prompt + tools + tool response formatting)
+│   └── tools/              # getToolsForChatML, executeTool
 ├── services/
-│   ├── llm/                     # LlamaService, textGenerator
-│   ├── tools/                   # walletTools, ToolFramework, ToolRegistry
-│   ├── mcp/                     # loadMCP (tool definitions)
-│   └── rpc/                     # solanaRpcClient
-├── store/
-│   ├── walletStore, compressedStore, shieldedStore, walletBalanceData
-│   ├── chatStore, llmStore, addressBookStore, settingsStore
-│   └── ...
-├── mcp/tools/                   # get_balance, get_private_balance, send_sol, shield_funds, etc.
-└── utils/                       # chatTemplate, chatml, modelDownloader, polyfills
+│   ├── llm/                 # LlamaService, textGenerator (llama.rn)
+│   ├── tools/               # walletTools (get_balance, send_sol, shield_funds, etc.)
+│   ├── mcp/loadMCP.ts       # MCP tool definitions
+│   └── rpc/                 # solanaRpcClient
+├── store/                   # Zustand: wallet, compressed, shielded, chat, llm, addressBook, settings
+├── constants/               # network (RPC), Models, theme
+├── mcp/tools/               # JSON tool defs (get_balance, send_sol, …)
+├── utils/                   # chatTemplate, modelDownloader, polyfills
+├── BUILD.md                 # Build & release (APK, IPA)
+└── MILESTONE.md             # Scope & deliverables
 ```
 
 ## Configuration
@@ -143,12 +270,30 @@ Balance data comes from `store/walletBalanceData.ts` (synced with `shieldedStore
 
 ## Performance Tips
 
-1. **Start with smaller models** (LFM2 350M) for testing
-2. **Enable GPU acceleration** (default: 99 layers)
-3. **Adjust context size** based on device memory
-4. **Clear chat history** periodically to free memory
+1. **Release builds** (APK/IPA) are much faster than dev builds; use them for demos and testing.
+2. **Start with smaller models** (LFM2 350M) for testing.
+3. **Enable GPU acceleration** (default: 99 layers).
+4. **Adjust context size** based on device memory.
+5. **Clear chat history** periodically to free memory.
 
 ## Troubleshooting
+
+### Helius RPC (required for ZK / private balance)
+
+The app uses **Helius** (or another ZK-capable RPC) for devnet when configured: both wallet RPC and ZK compression use the same URL so `getSlot`, shielded balance, and private send work. Set in `.env`:
+
+```
+EXPO_PUBLIC_COMPRESSION_API_URL=https://devnet.helius-rpc.com?api-key=YOUR_KEY
+```
+
+- **Debug:** Metro/Expo load `.env`; or set the env when starting.
+- **Release:** Rebuild from project root so `app.config.js` bakes the URL into the app (IPA: `bun run buildipa`; APK: `bun run android:apk`).
+
+Do **not** commit `.env` (it’s in `.gitignore`). See [Helius ZK Compression](https://www.helius.dev/docs/api-reference/zk-compression).
+
+### Private / shielded: "method not found" or "failed to get a slot" in release
+
+Same as above: set `EXPO_PUBLIC_COMPRESSION_API_URL` in `.env` and rebuild the release from the project root.
 
 ### Model won't download
 
