@@ -15,6 +15,10 @@
     "android:rebuild": "expo prebuild --clean && expo run:android",
     "android:apk": "cd android && ./gradlew assembleRelease",
     "android:apk:debug": "cd android && ./gradlew assembleDebug",
+    "buildipa": "node scripts/build-ipa.js",
+    "buildipa:archive": "node scripts/build-ipa.js --archive-only",
+    "release:ipa": "node scripts/release-ipa.js",
+    "release:ipa:upload": "RELEASE_IPA_UPLOAD_ONLY=1 node scripts/release-ipa.js",
     "postinstall": "patch-package"
   },
   "dependencies": {

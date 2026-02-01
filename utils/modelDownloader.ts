@@ -1,8 +1,11 @@
 import { DownloadProgress, ModelInfo } from '@/types/chat';
+import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
 
 export class ModelDownloader {
     private static downloadCallbacks: Map<string, (progress: DownloadProgress) => void> = new Map();
+    /** Content-Length from begin callback (iOS often doesn't report it in progress). */
+    private static contentLengthByModel: Map<string, number> = new Map();
 
     static async downloadModel(
         model: ModelInfo,
@@ -28,27 +31,52 @@ export class ModelDownloader {
         if (onProgress) {
             this.downloadCallbacks.set(model.id, onProgress);
         }
+        this.contentLengthByModel.delete(model.id);
 
+        const isIOS = Platform.OS === 'ios';
         try {
             // Start download
+            // iOS: progress callback only fires when `begin` is also provided (react-native-fs#760).
+            // iOS: background download can throttle/omit progress; use foreground on iOS for reliable feedback.
             const downloadResult = RNFS.downloadFile({
                 fromUrl: model.url,
                 toFile: modelPath,
-                background: true, // Enable background downloading for iOS
-                discretionary: true, // Allow OS to optimize scheduling
-                progressInterval: 500,
-                progress: (res) => {
-                    const progress: DownloadProgress = {
+                background: !isIOS,
+                discretionary: !isIOS,
+                progressInterval: isIOS ? 250 : 500,
+                begin: (res) => {
+                    if (res.contentLength > 0) {
+                        this.contentLengthByModel.set(model.id, res.contentLength);
+                    }
+                    // Emit initial progress so UI shows "Downloading..." immediately
+                    const total = res.contentLength > 0 ? res.contentLength : model.sizeBytes;
+                    const progressPayload: DownloadProgress = {
                         modelId: model.id,
-                        bytesDownloaded: res.bytesWritten,
-                        totalBytes: res.contentLength,
-                        percentage: (res.bytesWritten / res.contentLength) * 100,
+                        bytesDownloaded: 0,
+                        totalBytes: total,
+                        percentage: 0,
                         status: 'downloading',
                     };
-
+                    const cb = this.downloadCallbacks.get(model.id);
+                    if (cb) cb(progressPayload);
+                },
+                progress: (res) => {
+                    const total =
+                        res.contentLength > 0
+                            ? res.contentLength
+                            : this.contentLengthByModel.get(model.id) ?? model.sizeBytes;
+                    const percentage =
+                        total > 0 ? Math.min(100, (res.bytesWritten / total) * 100) : 0;
+                    const progressPayload: DownloadProgress = {
+                        modelId: model.id,
+                        bytesDownloaded: res.bytesWritten,
+                        totalBytes: total,
+                        percentage,
+                        status: 'downloading',
+                    };
                     const callback = this.downloadCallbacks.get(model.id);
                     if (callback) {
-                        callback(progress);
+                        callback(progressPayload);
                     }
                 },
             });
@@ -70,6 +98,7 @@ export class ModelDownloader {
                 }
 
                 this.downloadCallbacks.delete(model.id);
+                this.contentLengthByModel.delete(model.id);
                 return modelPath;
             } else {
                 throw new Error(`Download failed with status code: ${result.statusCode}`);
@@ -95,6 +124,7 @@ export class ModelDownloader {
             }
 
             this.downloadCallbacks.delete(model.id);
+            this.contentLengthByModel.delete(model.id);
             throw error;
         }
     }

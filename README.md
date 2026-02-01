@@ -1,15 +1,19 @@
-# Ghost Wallet - AI-Powered Conversational Interface
+# GhostWallet
 
-An Expo + React Native app with on-device AI capabilities using llama.rn for LLM inference and agentic task execution.
+AI-powered privacy wallet: Solana wallet with on-device AI (llama.rn) and conversational tools for balance, send, shield, and private send.
+
+**Milestone 2: Agentic Privacy Wallet** — Wallet + shielded (ZK Compression) flows + on-device AI that can run wallet actions from chat (same data as Wallet screen). See **[MILESTONE.md](./MILESTONE.md)** for scope and deliverables.
 
 ## Features
 
-✅ **100% On-Device AI** - No internet required after model download
-✅ **Real-time Streaming** - Token-by-token response generation
-✅ **Model Management** - Download and switch between models
-✅ **Chat History** - Persistent conversation storage
-✅ **Agentic Tasks** - Execute calculator, timer, and custom tasks
-✅ **GPU Acceleration** - OpenCL support for Android
+✅ **Wallet** – Send / receive SOL, private send (compressed SOL), address book, shielded (ZK Compression) balance  
+✅ **100% On-Device AI** – No internet required after model download  
+✅ **Real-time streaming** – Token-by-token responses  
+✅ **Wallet tools in chat** – Ask for balance, send SOL, shield funds, private send; tools use the same data as the Wallet screen  
+✅ **Model management** – Download and switch models in Settings  
+✅ **Chat history** – Persistent conversations  
+✅ **Dark mode** – Supported across app  
+✅ **GPU acceleration** – OpenCL on Android
 
 ## Quick Start
 
@@ -69,37 +73,35 @@ huggingface-cli download LiquidAI/LFM2.5-1.2B-Instruct-GGUF LFM2.5-1.2B-Instruct
 huggingface-cli download LiquidAI/LFM2.5-1.2B-Thinking-GGUF LFM2.5-1.2B-Thinking-Q4_0.gguf --local-dir .
 ```
 
+## Building release builds
+
+- **Android APK:** `bun run android:apk` → `android/app/build/outputs/apk/release/app-release.apk`
+- **iOS IPA:** `bun run buildipa` (macOS + Xcode; sets up `ios/` and ExportOptions if needed; first run: set your teamID in `ios/ExportOptions.plist` then run again)
+
+See **[BUILD.md](./BUILD.md)** for details (Android SDK, iOS teamID/export options, production signing).
+
 ## Architecture
 
 ```
 ghostwallet/
 ├── app/
-│   ├── (tabs)/
-│   │   └── ai-chat.tsx          # Main chat interface
-│   └── settings/
-│       └── ai-settings.tsx      # Model management
-├── components/
-│   └── chat/
-│       ├── ChatContainer.tsx    # Chat UI container
-│       ├── MessageBubble.tsx    # Message display
-│       └── ChatInput.tsx        # Input component
+│   ├── index.tsx, _layout.tsx
+│   ├── settings/ai-settings.tsx
+│   └── wallet/                 # Send, receive, private-send, address-book, shielded
+├── components/chat/             # ChatContainer, MessageBubble, ChatInput, LlmOutputRenderer
+├── sdk/chat/                    # ChatSession, tool response formatting
+├── sdk/tools/                   # Tool registration, getToolsForChatML, executeTool
 ├── services/
-│   ├── llm/
-│   │   └── LlamaService.ts      # LLM singleton
-│   └── agent/
-│       ├── AgentExecutor.ts     # Task execution
-│       └── tasks/               # Built-in tasks
+│   ├── llm/                     # LlamaService, textGenerator
+│   ├── tools/                   # walletTools, ToolFramework, ToolRegistry
+│   ├── mcp/                     # loadMCP (tool definitions)
+│   └── rpc/                     # solanaRpcClient
 ├── store/
-│   ├── chatStore.ts             # Chat state
-│   ├── llmStore.ts              # Model state
-│   └── ttsStore.ts              # TTS settings
-├── types/
-│   └── chat.ts                  # TypeScript types
-├── constants/
-│   ├── Models.ts                # Model configs
-│   └── TTSVoices.ts             # TTS voices
-└── utils/
-    └── modelDownloader.ts       # Download manager
+│   ├── walletStore, compressedStore, shieldedStore, walletBalanceData
+│   ├── chatStore, llmStore, addressBookStore, settingsStore
+│   └── ...
+├── mcp/tools/                   # get_balance, get_private_balance, send_sol, shield_funds, etc.
+└── utils/                       # chatTemplate, chatml, modelDownloader, polyfills
 ```
 
 ## Configuration
@@ -126,50 +128,18 @@ Edit model parameters in AI Settings:
 }
 ```
 
-## Agentic Tasks
+## Wallet tools in chat
 
-The AI can execute on-device tasks:
+The AI can use MCP-style tools (see `services/tools/walletTools.ts` and `mcp/tools/*.json`):
 
-### Calculator
+- **get_balance** – Total, public, and shielded SOL (same source as Wallet screen)
+- **get_private_balance** – Shielded (compressed) balance only
+- **send_sol** – Send public SOL
+- **shield_funds** – Convert public SOL to shielded (compressed)
+- **private_send** – Send shielded SOL
+- **get_contacts** – List address book
 
-```
-User: "Calculate 15 * 234"
-AI: *executes calculator task* "The result is 3510"
-```
-
-### Timer
-
-```
-User: "What time is it?"
-AI: *executes timer task* "It's 9:47 PM"
-```
-
-### Custom Tasks
-
-Add your own tasks in `services/agent/tasks/`:
-
-```typescript
-export const MyTask: AgentTask = {
-  name: "my_task",
-  description: "Description for the AI",
-  parameters: {
-    /* ... */
-  },
-  async execute(params) {
-    // Your on-device logic
-    return { success: true, data: result };
-  },
-};
-```
-
-Register in `AgentExecutor`:
-
-```typescript
-import { agentExecutor } from "@/services/agent/AgentExecutor";
-import { MyTask } from "@/services/agent/tasks/MyTask";
-
-agentExecutor.registerTask(MyTask);
-```
+Balance data comes from `store/walletBalanceData.ts` (synced with `shieldedStore` for shielded balance).
 
 ## Performance Tips
 
