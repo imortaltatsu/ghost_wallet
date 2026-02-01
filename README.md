@@ -2,7 +2,7 @@
 
 AI-powered privacy wallet: Solana wallet with on-device AI (llama.rn) and conversational tools for balance, send, shield, and private send.
 
-**Hackathon submission** — GhostWallet is built as a hackathon project: agentic privacy wallet with on-device LLM, ZK Compression (shielded balance / private send), and MCP-style tools in chat. See **[MILESTONE.md](./MILESTONE.md)** for scope and deliverables.
+**Solana Privacy Hack** — GhostWallet is an agentic privacy wallet with on-device LLM, ZK Compression (shielded balance / private send), and MCP-style tools in chat. See **[MILESTONE.md](./MILESTONE.md)** for scope and deliverables.
 
 ## Features
 
@@ -62,28 +62,19 @@ bun run android
 1. **Launch the app** and navigate to the "AI Chat" tab
 2. **Tap "Select Model"** to go to AI Settings
 3. **Choose a model** to download:
-   - **Ghost AI (LFM2 350M, Recommended)** - ~230MB, ultra-fast
-   - **LFM2.5 1.2B Instruct** - ~750MB, larger instruct model
+   - **Ghost AI** (Recommended) – ~514 MB, fast base model
+   - **Ghost AI Pro** – ~696 MB, instruct model
+   - **Ghost AI Ultra (Experimental)** – ~696 MB, reasoning / chain-of-thought
 4. **Wait for download** to complete (progress shown)
 5. **Start chatting!** The model runs 100% on your device
 
 ## Available Models
 
-| Model                         | Size    | Description                       |
-| ----------------------------- | ------- | --------------------------------- |
-| Ghost AI (LFM2 350M Q4_K_M)   | ~230 MB | Ultra-fast, optimized for mobile  |
-| LFM2.5 1.2B Instruct (Q4_K_M) | ~731 MB | Larger instruct model             |
-| LFM2.5 1.2B Thinking (Q4_0)   | ~696 MB | Thinking / chain-of-thought model |
-
-### Optional: Pre-download via CLI
-
-Use the **exact** Hugging Face filenames (PascalCase). Example:
-
-```bash
-pip install huggingface-hub
-huggingface-cli download LiquidAI/LFM2.5-1.2B-Instruct-GGUF LFM2.5-1.2B-Instruct-Q4_K_M.gguf --local-dir .
-huggingface-cli download LiquidAI/LFM2.5-1.2B-Thinking-GGUF LFM2.5-1.2B-Thinking-Q4_0.gguf --local-dir .
-```
+| Model                          | Size     | Description                                        |
+| ------------------------------ | -------- | -------------------------------------------------- |
+| Ghost AI                       | ~514 MB  | Fast responses. Base model, quick replies.         |
+| Ghost AI Pro                   | ~696 MB  | Instruct model. Smarter responses.                 |
+| Ghost AI Ultra (Experimental)  | ~696 MB  | Experimental reasoning / chain-of-thought model.   |
 
 ## Installation (release builds)
 
@@ -271,7 +262,7 @@ Balance data comes from `store/walletBalanceData.ts` (synced with `shieldedStore
 ## Performance Tips
 
 1. **Release builds** (APK/IPA) are much faster than dev builds; use them for demos and testing.
-2. **Start with smaller models** (LFM2 350M) for testing.
+2. **Start with smaller models** (Ghost AI) for testing.
 3. **Enable GPU acceleration** (default: 99 layers).
 4. **Adjust context size** based on device memory.
 5. **Clear chat history** periodically to free memory.
@@ -344,7 +335,6 @@ MIT
 
 ## Credits
 
+- **Light Protocol** – privacy infrastructure (ZK Compression, shielded balance)
 - **llama.rn** by [@mybigday](https://github.com/mybigday/llama.rn)
-- **LiquidAI LFM2** models
-- **Meta Llama** models
-- **Microsoft Phi** models
+- **LiquidAI** base models
