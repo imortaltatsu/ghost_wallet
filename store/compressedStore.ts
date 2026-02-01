@@ -19,6 +19,23 @@ const COMPRESSION_INDEXER_REQUIRED_REGEX =
 const COMPRESSION_INDEXER_REQUIRED_MSG =
   "Compression indexer required. Set EXPO_PUBLIC_COMPRESSION_API_URL in .env to a ZK Compression API URL (e.g. Helius). See https://www.helius.dev/docs/api-reference/zk-compression";
 
+/** Runtime edge case: only 1, 2, 3, 4 or 8 compressed accounts are supported; 5/6/7 can be selected for some wallets and fail. */
+const INVALID_COMPRESSED_ACCOUNT_COUNT_REGEX =
+  /(invalid|unvalid)\s*no\.?\s*of\s*compressed\s*ac?counts?/i;
+
+const INVALID_COMPRESSED_ACCOUNT_COUNT_MSG =
+  "Decompress failed: only 1–4 or 8 compressed accounts are supported. Try a smaller amount and decompress in two steps, or try again.";
+
+/**
+ * Max compressed accounts per decompress tx (only 1, 2, 3, 4 or 8 are supported).
+ * When more than 4 are needed we batch: multiple txs, each with ≤4 accounts.
+ * Client flow & validity proofs: https://www.zkcompression.com/client-library/client-guide#update%2C-close%2C-reinit%2C-burn
+ * Light System Program / compressed account lifecycle:
+ * - Close: https://www.zkcompression.com/compressed-pdas/guides/how-to-close-compressed-accounts
+ * - Burn: https://www.zkcompression.com/compressed-pdas/guides/how-to-burn-compressed-accounts
+ */
+const MAX_DECOMPRESS_ACCOUNTS = 4;
+
 /** Interval for background refresh of private SOL balance (cache is current state; this keeps it updated). */
 const PRIVATE_BALANCE_REFRESH_INTERVAL_MS = 30_000;
 
@@ -681,8 +698,12 @@ export const useCompressedStore = create<CompressedState>((set, get) => {
       await get().refresh(payer.publicKey);
       return typeof sig === "string" ? sig : String(sig);
     } catch (e) {
-      set({ transferError: getErrorMessage(e) });
-      throw e;
+      const msg = getErrorMessage(e);
+      const userMsg = INVALID_COMPRESSED_ACCOUNT_COUNT_REGEX.test(msg)
+        ? INVALID_COMPRESSED_ACCOUNT_COUNT_MSG
+        : msg;
+      set({ transferError: userMsg });
+      throw new Error(userMsg);
     }
   },
 
