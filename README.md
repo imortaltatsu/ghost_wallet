@@ -322,12 +322,14 @@ expo install <package-name>
 
 ## Tech Stack
 
-- **Expo SDK 54** - React Native framework
-- **llama.rn** - On-device LLM inference
-- **Zustand** - State management
-- **React Native FS** - File system access
-- **AsyncStorage** - Persistent storage
-- **Markdown Display** - Rich text rendering
+- **Expo SDK 54** – React Native framework
+- **Solana** – `@solana/web3.js`, `@solana/client` for RPC and wallet
+- **Light Protocol SDK** – `@lightprotocol/compressed-token`, `@lightprotocol/stateless.js` for ZK Compression (shielded balance, private send)
+- **llama.rn** – On-device LLM inference
+- **Zustand** – State management
+- **React Native FS** – File system access
+- **AsyncStorage** – Persistent storage
+- **Markdown Display** – Rich text rendering
 
 ## License
 
