@@ -1,195 +1,210 @@
-import { DEFAULT_MODEL_CONFIG, RECOMMENDED_MODELS } from '@/constants/Models';
-import { DownloadProgress, ModelConfig, ModelInfo } from '@/types/chat';
-import { ModelDownloader } from '@/utils/modelDownloader';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { create } from 'zustand';
+import { DEFAULT_MODEL_CONFIG, RECOMMENDED_MODELS } from "@/constants/Models";
+import { DownloadProgress, ModelConfig, ModelInfo } from "@/types/chat";
+import { ModelDownloader } from "@/utils/modelDownloader";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { create } from "zustand";
 
 interface LLMStore {
-    currentModel: ModelInfo | null;
-    modelConfig: ModelConfig;
-    isModelLoaded: boolean;
-    isLoading: boolean;
-    error: string | null;
-    downloadProgress: DownloadProgress | null;
-    availableModels: ModelInfo[];
+  currentModel: ModelInfo | null;
+  modelConfig: ModelConfig;
+  isModelLoaded: boolean;
+  isLoading: boolean;
+  error: string | null;
+  downloadProgress: DownloadProgress | null;
+  availableModels: ModelInfo[];
 
-    // Actions
-    setCurrentModel: (model: ModelInfo) => void;
-    updateModelConfig: (config: Partial<ModelConfig>) => void;
-    setModelLoaded: (loaded: boolean) => void;
-    setLoading: (loading: boolean) => void;
-    setError: (error: string | null) => void;
-    setDownloadProgress: (progress: DownloadProgress | null) => void;
-    downloadModel: (model: ModelInfo) => Promise<string>;
-    loadAvailableModels: () => Promise<void>;
-    deleteModel: (modelId: string) => Promise<void>;
-    loadSettings: () => Promise<void>;
-    saveSettings: () => Promise<void>;
+  // Actions
+  setCurrentModel: (model: ModelInfo) => void;
+  updateModelConfig: (config: Partial<ModelConfig>) => void;
+  setModelLoaded: (loaded: boolean) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  setDownloadProgress: (progress: DownloadProgress | null) => void;
+  downloadModel: (model: ModelInfo) => Promise<string>;
+  loadAvailableModels: () => Promise<void>;
+  deleteModel: (modelId: string) => Promise<void>;
+  loadSettings: () => Promise<void>;
+  saveSettings: () => Promise<void>;
 }
 
-const STORAGE_KEY = '@ghostwallet:llm_settings';
+const STORAGE_KEY = "@ghostwallet:llm_settings";
 
 export const useLLMStore = create<LLMStore>((set, get) => ({
-    currentModel: null,
-    modelConfig: {
-        ...DEFAULT_MODEL_CONFIG,
-        modelPath: '',
-        modelName: '',
-    },
-    isModelLoaded: false,
-    isLoading: false,
-    error: null,
-    downloadProgress: null,
-    availableModels: RECOMMENDED_MODELS,
+  currentModel: null,
+  modelConfig: {
+    ...DEFAULT_MODEL_CONFIG,
+    modelPath: "",
+    modelName: "",
+  },
+  isModelLoaded: false,
+  isLoading: false,
+  error: null,
+  downloadProgress: null,
+  availableModels: RECOMMENDED_MODELS,
 
-    setCurrentModel: (model) => {
-        set({ currentModel: model });
-        get().saveSettings();
-    },
+  setCurrentModel: (model) => {
+    set({ currentModel: model });
+    get().saveSettings();
+  },
 
-    updateModelConfig: (config) => {
-        set((state) => ({
-            modelConfig: { ...state.modelConfig, ...config },
-        }));
-        get().saveSettings();
-    },
+  updateModelConfig: (config) => {
+    set((state) => ({
+      modelConfig: { ...state.modelConfig, ...config },
+    }));
+    get().saveSettings();
+  },
 
-    setModelLoaded: (loaded) => {
-        set({ isModelLoaded: loaded, error: loaded ? null : get().error });
-    },
+  setModelLoaded: (loaded) => {
+    set({ isModelLoaded: loaded, error: loaded ? null : get().error });
+  },
 
-    setLoading: (loading) => {
-        set({ isLoading: loading });
-    },
+  setLoading: (loading) => {
+    set({ isLoading: loading });
+  },
 
-    setError: (error) => {
-        set({ error, isLoading: false });
-    },
+  setError: (error) => {
+    set({ error, isLoading: false });
+  },
 
-    setDownloadProgress: (progress) => {
-        set({ downloadProgress: progress });
-    },
+  setDownloadProgress: (progress) => {
+    set({ downloadProgress: progress });
+  },
 
-    downloadModel: async (model) => {
-        try {
-            set({ isLoading: true, error: null });
+  downloadModel: async (model) => {
+    try {
+      set({ isLoading: true, error: null });
 
-            const modelPath = await ModelDownloader.downloadModel(
-                model,
-                (progress) => {
-                    set({ downloadProgress: progress });
-                }
-            );
+      const modelPath = await ModelDownloader.downloadModel(
+        model,
+        (progress) => {
+          set({ downloadProgress: progress });
+        },
+      );
 
-            set({
-                isLoading: false,
-                downloadProgress: null,
-            });
+      set({
+        isLoading: false,
+        downloadProgress: null,
+      });
 
-            return modelPath;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Download failed';
-            set({
-                error: errorMessage,
-                isLoading: false,
-                downloadProgress: null,
-            });
-            throw error;
-        }
-    },
+      return modelPath;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Download failed";
+      set({
+        error: errorMessage,
+        isLoading: false,
+        downloadProgress: null,
+      });
+      throw error;
+    }
+  },
 
-    loadAvailableModels: async () => {
-        try {
-            // Migration: Check for legacy lfm2-350m-q4.gguf and rename to lfm2-350m.gguf
-            const fs = require('react-native-fs');
-            const modelDir = `${fs.DocumentDirectoryPath}/models`;
-            const legacyPath = `${modelDir}/lfm2-350m-q4.gguf`;
-            const newPath = `${modelDir}/lfm2-350m.gguf`;
+  loadAvailableModels: async () => {
+    try {
+      const downloadedModelIds = await ModelDownloader.getDownloadedModels();
+      console.log("Downloaded models:", downloadedModelIds);
 
-            if ((await fs.exists(legacyPath)) && !(await fs.exists(newPath))) {
-                console.log('Migrating legacy model file...');
-                await fs.moveFile(legacyPath, newPath);
-                console.log('Migration complete.');
+      // Fetch file sizes for downloaded models
+      const fs = require("react-native-fs");
+      const modelDir = `${fs.DocumentDirectoryPath}/models`;
+
+      const updatedModels = await Promise.all(
+        RECOMMENDED_MODELS.map(async (model) => {
+          const isDownloaded = downloadedModelIds.includes(model.id);
+          let localSize = undefined;
+
+          if (isDownloaded) {
+            try {
+              const stats = await fs.stat(`${modelDir}/${model.id}.gguf`);
+              localSize = stats.size;
+            } catch (e) {
+              console.log("Error getting file stats:", e);
             }
+          }
 
-            const downloadedModelIds = await ModelDownloader.getDownloadedModels();
-            console.log('Downloaded models:', downloadedModelIds);
+          return {
+            ...model,
+            downloaded: isDownloaded,
+            localPath: isDownloaded
+              ? `${modelDir}/${model.id}.gguf`
+              : undefined,
+            // Optionally update size if you want exact bytes on disk:
+            // sizeBytes: localSize || model.sizeBytes
+          };
+        }),
+      );
 
-            const updatedModels = RECOMMENDED_MODELS.map((model) => ({
-                ...model,
-                downloaded: downloadedModelIds.includes(model.id),
-                localPath: downloadedModelIds.includes(model.id)
-                    ? `${fs.DocumentDirectoryPath}/models/${model.id}.gguf`
-                    : undefined,
-            }));
+      set({ availableModels: updatedModels });
 
-            set({ availableModels: updatedModels });
+      // Ensure current model state is consistent with disk (always refresh localPath from disk)
+      const state = get();
+      const current = state.currentModel;
 
-            // Ensure current model state is consistent with disk
-            const state = get();
-            const current = state.currentModel;
-
-            if (current) {
-                // If current model exists in our updated list, sync its downloaded status
-                const updatedCurrent = updatedModels.find(m => m.id === current.id);
-                if (updatedCurrent && updatedCurrent.downloaded !== current.downloaded) {
-                    console.log(`Syncing current model status: ${current.id} downloaded=${updatedCurrent.downloaded}`);
-                    set({
-                        currentModel: {
-                            ...current,
-                            downloaded: updatedCurrent.downloaded,
-                            localPath: updatedCurrent.localPath
-                        }
-                    });
-                }
-            } else {
-                // Auto-select if no current model
-                const downloaded = updatedModels.find(m => m.downloaded);
-                if (downloaded) {
-                    set({ currentModel: downloaded });
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load available models:', error);
+      if (current) {
+        const updatedCurrent = updatedModels.find((m) => m.id === current.id);
+        if (updatedCurrent) {
+          set({
+            currentModel: {
+              ...current,
+              downloaded: updatedCurrent.downloaded,
+              localPath: updatedCurrent.localPath,
+            },
+          });
+        } else {
+          // Persisted model no longer in list (e.g. removed); clear or pick first downloaded
+          const fallback =
+            updatedModels.find((m) => m.downloaded) || updatedModels[0];
+          set({ currentModel: fallback || null });
         }
-    },
-
-    deleteModel: async (modelId) => {
-        try {
-            await ModelDownloader.deleteModel(modelId);
-            await get().loadAvailableModels();
-
-            // If deleted model was current, clear it
-            if (get().currentModel?.id === modelId) {
-                set({ currentModel: null, isModelLoaded: false });
-            }
-        } catch (error) {
-            console.error('Failed to delete model:', error);
-            throw error;
+      } else {
+        const downloaded = updatedModels.find((m) => m.downloaded);
+        if (downloaded) {
+          set({ currentModel: downloaded });
+        } else if (updatedModels.length > 0) {
+          set({ currentModel: updatedModels[0] });
         }
-    },
+      }
+    } catch (error) {
+      console.error("Failed to load available models:", error);
+    }
+  },
 
-    loadSettings: async () => {
-        try {
-            const stored = await AsyncStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                const { currentModel, modelConfig } = JSON.parse(stored);
-                set({ currentModel, modelConfig });
-            }
-        } catch (error) {
-            console.error('Failed to load LLM settings:', error);
-        }
-    },
+  deleteModel: async (modelId) => {
+    try {
+      await ModelDownloader.deleteModel(modelId);
+      await get().loadAvailableModels();
 
-    saveSettings: async () => {
-        try {
-            const { currentModel, modelConfig } = get();
-            await AsyncStorage.setItem(
-                STORAGE_KEY,
-                JSON.stringify({ currentModel, modelConfig })
-            );
-        } catch (error) {
-            console.error('Failed to save LLM settings:', error);
-        }
-    },
+      // If deleted model was current, clear it
+      if (get().currentModel?.id === modelId) {
+        set({ currentModel: null, isModelLoaded: false });
+      }
+    } catch (error) {
+      console.error("Failed to delete model:", error);
+      throw error;
+    }
+  },
+
+  loadSettings: async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const { currentModel, modelConfig } = JSON.parse(stored);
+        set({ currentModel, modelConfig });
+      }
+    } catch (error) {
+      console.error("Failed to load LLM settings:", error);
+    }
+  },
+
+  saveSettings: async () => {
+    try {
+      const { currentModel, modelConfig } = get();
+      await AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ currentModel, modelConfig }),
+      );
+    } catch (error) {
+      console.error("Failed to save LLM settings:", error);
+    }
+  },
 }));

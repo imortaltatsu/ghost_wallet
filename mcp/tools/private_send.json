@@ -1,0 +1,19 @@
+{
+  "name": "private_send",
+  "description": "Send privately: transfer compressed (private) SOL to another wallet using ZK Compression. The transfer is private and does not appear as a normal on-chain send. Use when the user says 'send privately', 'send private SOL', or 'send to [contact] privately'. Recipient can be a Solana base58 address or a contact name from the address book (e.g. landlord, Bob).",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "amount": {
+        "type": "number",
+        "description": "Amount of SOL to send (from private balance)"
+      },
+      "recipient": {
+        "type": "string",
+        "description": "Recipient: Solana address (base58) or contact name from the address book (e.g. landlord)."
+      }
+    },
+    "required": ["amount", "recipient"],
+    "additionalProperties": false
+  }
+}

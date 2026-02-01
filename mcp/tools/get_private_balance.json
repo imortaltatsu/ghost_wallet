@@ -1,0 +1,10 @@
+{
+  "name": "get_private_balance",
+  "description": "Get the user's private (compressed / shielded) SOL balance. Use with get_balance to report both public and private balances.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "get_balance",
+  "description": "Get the wallet's public SOL balance and private (compressed) SOL balance. Returns both so you can tell the user: public balance (on-chain) and private balance (ZK compressed).",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+  }
+}

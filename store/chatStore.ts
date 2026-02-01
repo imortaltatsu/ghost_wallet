@@ -8,10 +8,11 @@ interface ChatStore {
     conversationId: string;
 
     // Actions
-    addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
+    addMessage: (message: Partial<Message> & { role: 'user' | 'assistant' | 'system'; content: string }) => Message;
     updateStreamingMessage: (token: string) => void;
     startStreaming: (messageId: string) => void;
     stopStreaming: () => void;
+    setMessageContent: (messageId: string, content: string) => void;
     clearHistory: () => void;
     loadHistory: () => Promise<void>;
     saveHistory: () => Promise<void>;
@@ -33,7 +34,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         const newMessage: Message = {
             id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Default if not provided
             timestamp: Date.now(),
-            ...message, // Allows overriding id and timestamp if passed in message object
+            ...message,
         };
 
         set((state) => ({
@@ -42,6 +43,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
         // Auto-save after adding message
         get().saveHistory();
+
+        return newMessage;
     },
 
     updateStreamingMessage: (token) => {
@@ -99,6 +102,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         });
 
         // Save after streaming completes
+        get().saveHistory();
+    },
+
+    setMessageContent: (messageId, content) => {
+        set((state) => ({
+            messages: state.messages.map((msg) =>
+                msg.id === messageId ? { ...msg, content } : msg
+            ),
+        }));
         get().saveHistory();
     },
 

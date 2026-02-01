@@ -1,0 +1,10 @@
+{
+  "name": "get_contacts",
+  "description": "Get the list of saved contacts from the address book (name and address). Use when the user asks who they can send to, or to list contacts.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+  }
+}

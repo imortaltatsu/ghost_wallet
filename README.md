@@ -46,20 +46,28 @@ bun run android
 1. **Launch the app** and navigate to the "AI Chat" tab
 2. **Tap "Select Model"** to go to AI Settings
 3. **Choose a model** to download:
-   - **LiquidAI LFM2 350M (Recommended)** - 220MB, ultra-fast
-   - **Llama 3.2 1B** - 750MB, balanced
-   - **Llama 3.2 3B** - 2GB, higher quality
+   - **Ghost AI (LFM2 350M, Recommended)** - ~230MB, ultra-fast
+   - **LFM2.5 1.2B Instruct** - ~750MB, larger instruct model
 4. **Wait for download** to complete (progress shown)
 5. **Start chatting!** The model runs 100% on your device
 
 ## Available Models
 
-| Model | Size | Description |
-|-------|------|-------------|
-| LiquidAI LFM2 350M (Q4_K_M) | 220 MB | Ultra-fast, optimized for mobile |
-| Llama 3.2 1B Instruct (Q4_K_M) | 750 MB | Balanced performance |
-| Llama 3.2 3B Instruct (Q4_K_M) | 2.0 GB | Higher quality responses |
-| Phi 3.5 Mini Instruct (Q4_K_M) | 2.2 GB | Strong reasoning & coding |
+| Model                         | Size    | Description                       |
+| ----------------------------- | ------- | --------------------------------- |
+| Ghost AI (LFM2 350M Q4_K_M)   | ~230 MB | Ultra-fast, optimized for mobile  |
+| LFM2.5 1.2B Instruct (Q4_K_M) | ~731 MB | Larger instruct model             |
+| LFM2.5 1.2B Thinking (Q4_0)   | ~696 MB | Thinking / chain-of-thought model |
+
+### Optional: Pre-download via CLI
+
+Use the **exact** Hugging Face filenames (PascalCase). Example:
+
+```bash
+pip install huggingface-hub
+huggingface-cli download LiquidAI/LFM2.5-1.2B-Instruct-GGUF LFM2.5-1.2B-Instruct-Q4_K_M.gguf --local-dir .
+huggingface-cli download LiquidAI/LFM2.5-1.2B-Thinking-GGUF LFM2.5-1.2B-Thinking-Q4_0.gguf --local-dir .
+```
 
 ## Architecture
 
@@ -142,9 +150,11 @@ Add your own tasks in `services/agent/tasks/`:
 
 ```typescript
 export const MyTask: AgentTask = {
-  name: 'my_task',
-  description: 'Description for the AI',
-  parameters: { /* ... */ },
+  name: "my_task",
+  description: "Description for the AI",
+  parameters: {
+    /* ... */
+  },
   async execute(params) {
     // Your on-device logic
     return { success: true, data: result };
@@ -155,8 +165,8 @@ export const MyTask: AgentTask = {
 Register in `AgentExecutor`:
 
 ```typescript
-import { agentExecutor } from '@/services/agent/AgentExecutor';
-import { MyTask } from '@/services/agent/tasks/MyTask';
+import { agentExecutor } from "@/services/agent/AgentExecutor";
+import { MyTask } from "@/services/agent/tasks/MyTask";
 
 agentExecutor.registerTask(MyTask);
 ```

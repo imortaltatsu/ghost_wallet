@@ -1,4 +1,4 @@
-export type MessageRole = 'user' | 'assistant' | 'system';
+export type MessageRole = "user" | "assistant" | "system";
 
 export interface Message {
   id: string;
@@ -14,6 +14,17 @@ export interface StreamingState {
   accumulatedText: string;
 }
 
+/** KV cache dtype for compression (llama.rn / llama.cpp). */
+export type KvCacheType =
+  | "f16"
+  | "f32"
+  | "q8_0"
+  | "q4_0"
+  | "q4_1"
+  | "iq4_nl"
+  | "q5_0"
+  | "q5_1";
+
 export interface ModelConfig {
   modelPath: string;
   modelName: string;
@@ -24,6 +35,10 @@ export interface ModelConfig {
   repeatPenalty: number;
   nGpuLayers: number;
   nPredict: number;
+  /** KV cache dtype for K (q4_0 = compressed). */
+  cacheTypeK?: KvCacheType;
+  /** KV cache dtype for V (q4_0 = compressed). */
+  cacheTypeV?: KvCacheType;
 }
 
 export interface ModelInfo {
@@ -37,6 +52,8 @@ export interface ModelInfo {
   recommended?: boolean;
   downloaded?: boolean;
   localPath?: string;
+  /** Optional display aliases (e.g. "ghost ai", "ghost ai pro") for search/typo matching */
+  aliases?: string[];
 }
 
 export interface DownloadProgress {
@@ -44,7 +61,7 @@ export interface DownloadProgress {
   bytesDownloaded: number;
   totalBytes: number;
   percentage: number;
-  status: 'idle' | 'downloading' | 'completed' | 'error';
+  status: "idle" | "downloading" | "completed" | "error";
   error?: string;
 }
 
@@ -65,7 +82,7 @@ export interface TTSVoice {
   id: string;
   name: string;
   language: string;
-  gender?: 'male' | 'female';
+  gender?: "male" | "female";
 }
 
 export interface ChatSettings {

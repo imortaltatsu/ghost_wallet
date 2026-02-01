@@ -1,93 +1,105 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Colors } from "@/constants/theme";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
 
 interface ChatInputProps {
-    onSend: (message: string) => void;
-    disabled?: boolean;
-    isLoading?: boolean;
+  onSend: (message: string) => void;
+  disabled?: boolean;
+  isLoading?: boolean;
 }
 
 export function ChatInput({ onSend, disabled, isLoading }: ChatInputProps) {
-    const [text, setText] = useState('');
+  const [text, setText] = useState("");
+  const theme = useResolvedTheme();
+  const c = Colors[theme];
 
-    const handleSend = () => {
-        if (text.trim() && !disabled && !isLoading) {
-            onSend(text.trim());
-            setText('');
-        }
-    };
+  const themedStyles = useMemo(
+    () => ({
+      container: {
+        backgroundColor: c.background,
+        borderTopColor: c.border,
+      },
+      input: {
+        backgroundColor: c.inputBg,
+        color: c.text,
+      },
+      sendButton: { backgroundColor: c.tint },
+      sendButtonDisabled: { backgroundColor: c.border },
+    }),
+    [theme, c],
+  );
 
-    return (
-        <View style={styles.container}>
-            <TextInput
-                style={styles.input}
-                value={text}
-                onChangeText={setText}
-                placeholder="Type a message..."
-                placeholderTextColor="#999"
-                multiline
-                maxLength={2000}
-                editable={!disabled && !isLoading}
-                returnKeyType="send"
-                blurOnSubmit={false}
-                autoCorrect={true}
-                autoCapitalize="sentences"
-            />
+  const handleSend = () => {
+    if (text.trim() && !disabled && !isLoading) {
+      onSend(text.trim());
+      setText("");
+    }
+  };
 
-            <Pressable
-                onPress={handleSend}
-                disabled={!text.trim() || disabled || isLoading}
-                style={[
-                    styles.sendButton,
-                    (!text.trim() || disabled || isLoading) && styles.sendButtonDisabled,
-                ]}
-            >
-                {isLoading ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                    <Ionicons
-                        name="send"
-                        size={20}
-                        color={!text.trim() || disabled ? '#ccc' : '#fff'}
-                    />
-                )}
-            </Pressable>
-        </View>
-    );
+  return (
+    <View style={[styles.container, themedStyles.container]}>
+      <TextInput
+        style={[styles.input, themedStyles.input]}
+        value={text}
+        onChangeText={setText}
+        placeholder="Type a message..."
+        placeholderTextColor={c.placeholder}
+        multiline
+        maxLength={2000}
+        editable={!disabled && !isLoading}
+        returnKeyType="send"
+        blurOnSubmit={false}
+        autoCorrect={true}
+        autoCapitalize="sentences"
+      />
+      <Pressable
+        onPress={handleSend}
+        disabled={!text.trim() || disabled || isLoading}
+        style={[
+          styles.sendButton,
+          themedStyles.sendButton,
+          (!text.trim() || disabled || isLoading) && themedStyles.sendButtonDisabled,
+        ]}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color={c.primaryButtonText} />
+        ) : (
+          <Ionicons
+            name="send"
+            size={20}
+            color={!text.trim() || disabled ? c.placeholder : c.primaryButtonText}
+          />
+        )}
+      </Pressable>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderTopColor: '#e0e0e0',
-    },
-    input: {
-        flex: 1,
-        minHeight: 40,
-        maxHeight: 120,
-        backgroundColor: '#f5f5f5',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        marginRight: 8,
-        fontSize: 16,
-        color: '#000',
-    },
-    sendButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#007AFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sendButtonDisabled: {
-        backgroundColor: '#e0e0e0',
-    },
+  container: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 8,
+    fontSize: 16,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

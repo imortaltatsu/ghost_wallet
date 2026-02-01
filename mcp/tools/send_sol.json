@@ -1,0 +1,19 @@
+{
+  "name": "send_sol",
+  "description": "Send public SOL to a Solana address or to a contact from the address book (e.g. landlord, Bob). Transaction is visible on-chain.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "amount": {
+        "type": "number",
+        "description": "Amount of SOL to send"
+      },
+      "to_address": {
+        "type": "string",
+        "description": "Recipient: Solana address (base58) or contact name from the address book (e.g. landlord)."
+      }
+    },
+    "required": ["amount", "to_address"],
+    "additionalProperties": false
+  }
+}
